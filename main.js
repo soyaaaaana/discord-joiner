@@ -20,9 +20,8 @@ function removeCaptcha() {
   });
 }
 
-function onSuccess(token) {
-  const key = token.trim();
-  console.log("Captcha Solved: ", key);
+function onSuccess(key) {
+  console.log("Captcha Solved: " + key);
   log("✅ hCaptchaが解決されました！");
   const invite_data = captcha_invites[0];
   invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
