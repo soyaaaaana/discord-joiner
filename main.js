@@ -18,7 +18,7 @@ function onSuccess(token) {
   console.log("Captcha Solved: ", key);
   log("✅ hCaptchaが解決されました！");
   const invite_data = captcha_invites[0];
-  invite(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
+  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
   captcha_invites.shift();
   startCaptcha();
 }
@@ -285,15 +285,15 @@ async function invite(discord_token, invite_code) {
     log("❌ x-context-propertiesの値を取得できませんでした。別の固定値を使用します。");
   }
 
-  await invite(discord_token, invite_code, x_context_properties, null, null, null);
+  await invite_main(discord_token, invite_code, x_context_properties, null, null, null);
   return x_context_properties;
 }
 
-async function invite(discord_token, invite_code, x_context_properties) {
-  await invite(discord_token, invite_code, x_context_properties, null, null, null);
+async function invite_cp(discord_token, invite_code, x_context_properties) {
+  await invite_captcha(discord_token, invite_code, x_context_properties, null, null, null);
 }
 
-async function invite(discord_token, invite_code, x_context_properties, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
+async function invite_main(discord_token, invite_code, x_context_properties, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
   const token_mask = `${discord_token.split(".")[0]}.***`;
 
   const language = new Intl.Locale(navigator.language).baseName;
@@ -375,7 +375,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (tokens.length) {
       const x_context_properties = await invite(tokens.shift(), invite_code);
       for (const token in tokens) {
-        await invite(token, invite_code, x_context_properties);
+        await invite_cp(token, invite_code, x_context_properties);
       }
       log(`要求されたhCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
       startCaptcha();
