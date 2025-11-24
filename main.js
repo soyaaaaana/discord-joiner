@@ -8,9 +8,16 @@ function log(message) {
 }
 
 function startCaptcha() {
+  removeCaptcha();
   if (captcha_invites.length) {
     initCaptcha(captcha_invites[0].captcha_sitekey, captcha_invites[0].captcha_rqdata);
   }
+}
+
+function removeCaptcha() {
+  document.querySelectorAll("iframe[data-hcaptcha-widget-id]").forEach(widget => {
+    hcaptcha.remove(widget.getAttribute("data-hcaptcha-widget-id"));
+  });
 }
 
 function onSuccess(token) {
@@ -41,7 +48,7 @@ function initCaptcha(sitekey, rqdata) {
   log("✅ hCaptchaウィジェットを配置しました。")
 }
 
-// https://qiita.com/ShotaroImai/items/7ea552323a1f89d67907
+// ========== https://qiita.com/ShotaroImai/items/7ea552323a1f89d67907 ==========
 function CheckOs() {
   var ua = navigator.userAgent;
   var os;
@@ -219,16 +226,40 @@ function CheckBrowser() {
   }
   return bw;
 }
+// ========== ここまで ==========
 
 function generateRandomString(length, string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789") {
   return Array.from(crypto.getRandomValues(new Uint8Array(length))).map((n) => string[n % string.length]).join('')
 }
 
-function getSuperProperties() {
+// ========== https://docs.discord.food/reference#launch-signature (GeminiによってJavaScriptへ変換されたコード) ==========
+function generateLaunchSignature() {
+  const BITS = 0b00000000100000000001000000010000000010000001000000001000000000000010000010000001000000000100000000000001000000000000100000000000n;
+  const MASK_ALL = (1n << 128n) - 1n;
+
+  let randomInt = 0n;
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  for (let i = 0; i < 16; i++) {
+    randomInt = (randomInt << 8n) | BigInt(bytes[i]);
+  }
+
+  const resultInt = randomInt & (~BITS & MASK_ALL);
+
+  const hex = resultInt.toString(16).padStart(32, '0');
+
+  return hex.substring(0, 8) + '-' +
+    hex.substring(8, 12) + '-' +
+    hex.substring(12, 16) + '-' +
+    hex.substring(16, 20) + '-' +
+    hex.substring(20, 32);
+}
+// ========== ここまで ==========
+
+function getSuperPropertiesJson() {
   const os = CheckOs();
   const browser = CheckBrowser();
-  
-  return btoa(JSON.stringify({
+
+  return {
     "os": os.name,
     "browser": browser.name,
     "device": "",
@@ -245,10 +276,61 @@ function getSuperProperties() {
     "client_build_number": 471383,
     "client_event_source": null,
     "client_launch_id": crypto.randomUUID(),
-    "launch_signature": crypto.randomUUID(),
+    "launch_signature": generateLaunchSignature(),
     "client_app_state": "unfocused",
     "client_heartbeat_session_id": crypto.randomUUID()
-  }));
+  };
+}
+
+function getSuperProperties() {
+  return btoa(JSON.stringify(getSuperPropertiesJson()));
+}
+
+function getSessionId(discord_token) {
+  return new Promise((resolve, reject) => {
+    let complete = false;
+
+    const ws = new WebSocket("wss://gateway.discord.gg/?encoding=json&v=9");
+    ws.onopen = () => {
+      // ログイン
+      ws.send(JSON.stringify({
+        op: 2,
+        d: {
+          token: discord_token,
+          capabilities: 1734653,
+          properties: getSuperPropertiesJson(),
+          presence: {
+            status: "unknown",
+            since: 0,
+            activities: [],
+            afk: false
+          }
+        }
+      }));
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // ログイン時のユーザー情報などが送られてくるメッセージのみを取得する
+      if (data.op === 0 || data.t === "READY") {
+        complete = true;
+        ws.close();
+        resolve(data.d.session_id);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket Error: ", error);
+      reject(error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket connection closed.");
+      if (!complete) {
+        reject();
+      }
+    };
+  });
 }
 
 async function invite(discord_token, invite_code) {
@@ -266,6 +348,7 @@ async function invite(discord_token, invite_code) {
   let x_context_properties;
   if (response.ok) {
     const json = await response.json();
+
     x_context_properties = btoa(JSON.stringify({
       "location": "Accept Invite Page",
       "location_guild_id": json.guild.id,
@@ -285,15 +368,29 @@ async function invite(discord_token, invite_code) {
     log("❌ x-context-propertiesの値を取得できませんでした。別の固定値を使用します。");
   }
 
+  log("session_idの値を取得しています...");
+  let session_id;
+  try {
+    session_id = getSessionId(discord_token);
+    log("✅ session_idの値を取得しました！");
+  }
+  catch {
+    session_id = generateRandomString(32, "abcdef0123456789");
+    log("❌ session_idの値を取得できませんでした。ランダム文字列を使用します。");
+  }
+
   await invite_main(discord_token, invite_code, x_context_properties, null, null, null);
-  return x_context_properties;
+  return {
+    x_context_properties: x_context_properties,
+    session_id: session_id
+  };
 }
 
-async function invite_cp(discord_token, invite_code, x_context_properties) {
-  await invite_captcha(discord_token, invite_code, x_context_properties, null, null, null);
+async function invite_data(discord_token, invite_code, x_context_properties, session_id) {
+  await invite_main(discord_token, invite_code, x_context_properties, session_id, null, null, null);
 }
 
-async function invite_main(discord_token, invite_code, x_context_properties, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
+async function invite_main(discord_token, invite_code, x_context_properties, session_id, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
   const token_mask = `${discord_token.split(".")[0]}.***`;
 
   const language = new Intl.Locale(navigator.language).baseName;
@@ -330,7 +427,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, hca
   const response = await fetch("https://discord-joiner-api.soyaaaaana.com/" + invite_code, {
     "headers": headers,
     "body": JSON.stringify({
-      session_id: generateRandomString(32, "abcdef0123456789")
+      session_id: session_id
     }),
     "method": "POST"
   });
@@ -352,6 +449,9 @@ async function invite_main(discord_token, invite_code, x_context_properties, hca
   if (response.ok) {
     log(`✅ ${token_mask} サーバーへ参加しました！`);
   }
+  else if (response.status === 401) {
+    log(`❌ ${token_mask} トークンが無効なため、サーバーへ参加できませんでした...`);
+  }
   else {
     log(`❌ ${token_mask} サーバーへ参加できませんでした... ステータス: ${response.status}`);
   }
@@ -372,11 +472,14 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("execute").addEventListener("click", async() => {
     const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim());
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
+
     if (tokens.length) {
-      const x_context_properties = await invite(tokens.shift(), invite_code);
+      const data = await invite(tokens.shift(), invite_code);
+
       for (const token in tokens) {
-        await invite_cp(token, invite_code, x_context_properties);
+        await invite_data(token, invite_code, data.x_context_properties, data.session_id);
       }
+
       log(`要求されたhCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
       startCaptcha();
     }
