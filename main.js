@@ -25,7 +25,7 @@ function onSuccess(token) {
   console.log("Captcha Solved: ", key);
   log("✅ hCaptchaが解決されました！");
   const invite_data = captcha_invites[0];
-  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
+  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
   captcha_invites.shift();
   startCaptcha();
 }
@@ -379,7 +379,7 @@ async function invite(discord_token, invite_code) {
     log("❌ session_idの値を取得できませんでした。ランダム文字列を使用します。");
   }
 
-  await invite_main(discord_token, invite_code, x_context_properties, null, null, null);
+  await invite_main(discord_token, invite_code, x_context_properties, session_id, null, null, null);
   return {
     x_context_properties: x_context_properties,
     session_id: session_id
@@ -438,6 +438,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, ses
       discord_token: discord_token,
       invite_code: invite_code,
       x_context_properties: x_context_properties,
+      session_id: session_id,
       captcha_sitekey: json.captcha_sitekey,
       captcha_session_id: json.captcha_session_id,
       captcha_rqdata: json.captcha_rqdata,
