@@ -371,7 +371,7 @@ async function invite(discord_token, invite_code) {
   log("session_idの値を取得しています...");
   let session_id;
   try {
-    session_id = getSessionId(discord_token);
+    session_id = await getSessionId(discord_token);
     log("✅ session_idの値を取得しました！");
   }
   catch {
