@@ -25,11 +25,11 @@ function removeCaptcha() {
   });
 }
 
-function onSuccess(key) {
+async function onSuccess(key) {
   console.log("Captcha Solved: " + key);
   log("✅ hCaptchaが解決されました！");
   const invite_data = captcha_invites[0];
-  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.x_fingerprint, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
+  await invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.x_fingerprint, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
   captcha_invites.shift();
   startCaptcha();
 }
@@ -382,6 +382,10 @@ async function invite(discord_token, invite_code) {
     log("✅ x-context-propertiesの値を取得しました！");
   }
   else {
+    if (response.status === 404) {
+      log("❌ 招待リンクが無効です。\n");
+      return;
+    }
     x_context_properties = btoa(JSON.stringify({
       "location": "Accept Invite Page",
       "location_guild_id": "1441394248510607362",
