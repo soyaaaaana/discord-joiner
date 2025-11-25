@@ -12,6 +12,11 @@ function startCaptcha() {
   if (captcha_invites.length) {
     initCaptcha(captcha_invites[0].captcha_sitekey, captcha_invites[0].captcha_rqdata);
   }
+  else {
+    // complete
+    document.getElementById("execute").removeAttribute("disabled");
+    log("✅ 全て完了しました！\n");
+  }
 }
 
 function removeCaptcha() {
@@ -463,6 +468,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
   });
 
   if ((!hcaptcha_session_id || !hcaptcha_rqtoken || !hcaptcha_key) && response.status === 400) {
+    log(`⚠️ ${token_mask} Captchaが要求されました。操作が全て完了次第、hCaptchaウィジェットを配置します。`)
     const json = await response.json();
     captcha_invites.push({
       discord_token: discord_token,
@@ -484,8 +490,12 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
   else if (response.status === 401) {
     log(`❌ ${token_mask} トークンが無効なため、サーバーへ参加できませんでした...`);
   }
+  else if (response.status === 403) {
+    const json = await response.json();
+    log(`❌ ${token_mask} サーバーへ参加できませんでした...\n    エラーコード: ${json.code}\n    理由: ${json.message}`);
+  }
   else {
-    log(`❌ ${token_mask} サーバーへ参加できませんでした... ステータス: ${response.status}`);
+    log(`❌ ${token_mask} サーバーへ参加できませんでした...\n    HTTPステータスコード: ${response.status}`);
   }
 }
 
@@ -501,11 +511,13 @@ document.addEventListener("DOMContentLoaded", () => {
   updateTheme();
   document.body.style.display = "block";
 
-  document.getElementById("execute").addEventListener("click", async() => {
+  document.getElementById("execute").addEventListener("click", async (e) => {
+    e.target.setAttribute("disabled", "");
     const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim());
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
 
     if (tokens.length) {
+      log("サーバー参加のセットアップを開始します。");
       const data = await invite(tokens.shift(), invite_code);
 
       for (const token in tokens) {
@@ -514,6 +526,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
       log(`要求されたhCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
       startCaptcha();
+    }
+    else {
+      log("❌ トークンが指定されていません。");
+      e.target.removeAttribute("disabled");
     }
   });
 });
