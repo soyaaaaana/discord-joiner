@@ -583,8 +583,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      for (const token in tokens) {
-        await invite_data(token, invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
+      for (const token_index in tokens) {
+        await invite_data(tokens[token_index], invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
       }
 
       log(`要求されたCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
