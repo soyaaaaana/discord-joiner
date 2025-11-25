@@ -384,7 +384,9 @@ async function invite(discord_token, invite_code) {
   else {
     if (response.status === 404) {
       log("❌ 招待リンクが無効です。\n");
-      return;
+      return {
+        error: "invite",
+      };
     }
     x_context_properties = btoa(JSON.stringify({
       "location": "Accept Invite Page",
@@ -524,6 +526,10 @@ document.addEventListener("DOMContentLoaded", () => {
       log("サーバー参加のセットアップを開始します。");
       const data = await invite(tokens.shift(), invite_code);
 
+      if (data.error) {
+        return;
+      }
+      
       for (const token in tokens) {
         await invite_data(token, invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
       }
