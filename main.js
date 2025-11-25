@@ -1,9 +1,15 @@
 let captcha_invites = [];
 
+let strict_mode = false;
+let auto_scroll_mode = true;
+
 function log(message) {
   const element = document.getElementById("log");
   if (element) {
     element.value += message + "\n";
+    if (auto_scroll_mode) {
+      element.scrollTop = element.scrollHeight;
+    }
   }
 }
 
@@ -14,7 +20,7 @@ function startCaptcha() {
   }
   else {
     // complete
-    document.getElementById("execute").removeAttribute("disabled");
+    elementDisabled(false);
     log("✅ 全て完了しました！\n");
   }
 }
@@ -27,7 +33,7 @@ function removeCaptcha() {
 
 async function onSuccess(key) {
   console.log("Captcha Solved: " + key);
-  log("✅ hCaptchaが解決されました！");
+  log("✅ Captchaが解決されました！");
   const invite_data = captcha_invites[0];
   await invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.x_fingerprint, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
   captcha_invites.shift();
@@ -329,7 +335,7 @@ function getSessionId(discord_token) {
     };
 
     ws.onclose = () => {
-      console.log("WebSocket connection closed.");
+      // console.log("WebSocket connection closed.");
       if (!complete) {
         reject();
       }
@@ -388,13 +394,21 @@ async function invite(discord_token, invite_code) {
         error: "invite",
       };
     }
+
     x_context_properties = btoa(JSON.stringify({
       "location": "Accept Invite Page",
       "location_guild_id": "1441394248510607362",
       "location_channel_id": "1441394250297249874",
       "location_channel_type": 0
     }));
-    log("❌ x-context-propertiesの値を取得できませんでした。別の固定値を使用します。");
+
+    log(`❌ x-context-propertiesの値を取得できませんでした。${strict_mode ? "操作をキャンセル" : "別の固定値を使用"}します。`);
+
+    if (strict_mode) {
+      return {
+        error: "x-context-properties",
+      };
+    }
   }
 
   log("x-fingerprintの値とCookieを取得しています...");
@@ -404,7 +418,13 @@ async function invite(discord_token, invite_code) {
     log("✅ x-fingerprintの値とCookieを取得しました！");
   }
   catch {
-    log("❌ x-fingerprintの値とCookieを取得できませんでした。これらの値を使用せずに続行します。");
+    log(`❌ x-fingerprintの値とCookieを取得できませんでした。${strict_mode ? "操作をキャンセル" : "これらの値を使用せずに続行"}します。`);
+
+    if (strict_mode) {
+      return {
+        error: "x-fingerprint",
+      };
+    }
   }
 
   log("session_idの値を取得しています...");
@@ -414,8 +434,16 @@ async function invite(discord_token, invite_code) {
     log("✅ session_idの値を取得しました！");
   }
   catch {
-    session_id = generateRandomString(32, "abcdef0123456789");
-    log("❌ session_idの値を取得できませんでした。ランダム文字列を使用します。");
+    log(`❌ session_idの値を取得できませんでした。${strict_mode ? "操作をキャンセル" : "ランダム文字列を使用"}します。`);
+
+    if (strict_mode) {
+      return {
+        error: "session_id",
+      };
+    }
+    else {
+      session_id = generateRandomString(32, "abcdef0123456789");
+    }
   }
 
   await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
@@ -505,6 +533,20 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
   }
 }
 
+function elementDisabled(disabled) {
+  const elements = [
+    document.getElementById("execute"),
+    document.getElementById("strict")
+  ];
+
+  if (disabled) {
+    elements.forEach(element => element.setAttribute("disabled", ""));
+  }
+  else {
+    elements.forEach(element => element.removeAttribute("disabled"));
+  }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   function updateTheme() {
     const theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
@@ -517,8 +559,16 @@ document.addEventListener("DOMContentLoaded", () => {
   updateTheme();
   document.body.style.display = "block";
 
+  document.getElementById("auto_scroll").addEventListener("change", async (e) => {
+    auto_scroll_mode = e.target.checked;
+  });
+
   document.getElementById("execute").addEventListener("click", async (e) => {
-    e.target.setAttribute("disabled", "");
+
+    elementDisabled(true);
+
+    strict_mode = document.getElementById("strict").checked;
+
     const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim());
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
 
@@ -527,7 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await invite(tokens.shift(), invite_code);
 
       if (data.error) {
-        e.target.removeAttribute("disabled");
+        elementDisabled(false);
         return;
       }
 
@@ -535,12 +585,12 @@ document.addEventListener("DOMContentLoaded", () => {
         await invite_data(token, invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
       }
 
-      log(`要求されたhCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
+      log(`要求されたCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
       startCaptcha();
     }
     else {
       log("❌ トークンが指定されていません。");
-      e.target.removeAttribute("disabled");
+      elementDisabled(false);
     }
   });
 });

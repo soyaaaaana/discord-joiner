@@ -16,26 +16,47 @@
     <script src="./main.js"></script>
   </head>
   <body lang="ja" data-bs-theme="light" style="display:none">
-    <h2 class="mb-4 text-center">Discord Joiner</h2>
+
+    <h2 class="mb-4 text-center user-select-none">Discord Joiner</h2>
+
     <div class="mb-3">
-      <label for="tokens" class="form-label">Discord トークン</label>
+      <label for="tokens" class="form-label user-select-none">Discord トークン</label>
       <textarea class="form-control" id="tokens" aria-describedby="description1" style="field-sizing:content;min-height:calc(.85em + 2.0lh)"></textarea>
-      <div class="form-text" id="description1">改行で区切る</div>
+      <div class="form-text user-select-none" id="description1">改行で区切る</div>
     </div>
+
     <div class="mb-3">
-      <label for="invite" class="form-label">招待リンク</label>
-      <input type="text" class="form-control" id="invite" placeholder="discord.gg/"></input>
+      <label for="invite" class="form-label user-select-none">招待リンク</label>
+      <input type="text" class="form-control user-select-none" id="invite" placeholder="discord.gg/"></input>
     </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="strict">
+      <label class="form-check-label user-select-none" for="strict" aria-describedby="description2">正常実行できない場合にキャンセルする</label>
+      <div class="form-text user-select-none" id="description2">
+        サーバー参加時に使用する内部値を正しく取得できない場合に、ランダム値や固定値を使用するのではなく操作をキャンセルするオプションです。
+        <br>
+        このオプションを使用すると、Joinerの使用によるトークンの無効化、電話番号認証の要求などを防ぐことができる場合があります。
+      </div>
+    </div>
+
     <div class="d-flex flex-column">
       <button type="button" class="btn btn-primary text-nowrap mb-3 col-3 mx-auto" id="execute">実行</button>
       <div class="mb-3 mx-auto">
-        <label class="form-label">Captchaが要求された場合に、ここにhCaptchaウィジェットが表示されます。</label>
+        <label class="form-label user-select-none">Captchaが要求された場合に、ここにhCaptchaウィジェットが表示されます。</label>
         <div id="captcha-box" class="h-captcha" data-callback="onSuccess" data-theme="dark"></div>
       </div>
     </div>
+
     <div class="mb-3">
-      <label for="tokens" class="form-label">ログ</label>
+      <label for="tokens" class="form-label user-select-none">ログ</label>
       <textarea class="form-control" id="log" style="field-sizing:content;height:calc(.85em + 15.0lh)" readonly></textarea>
     </div>
+
+    <div class="form-check">
+      <input class="form-check-input" type="checkbox" id="auto_scroll" checked>
+      <label class="form-check-label user-select-none" for="auto_scroll">ログの自動スクロール</label>
+    </div>
+
   </body>
 </html>
