@@ -3,7 +3,9 @@ let captcha_invites = [];
 let strict_mode = false;
 let auto_scroll_mode = true;
 
+let first = true;
 function log(message) {
+  first = false;
   const element = document.getElementById("log");
   if (element) {
     element.value += message + "\n";
@@ -21,7 +23,7 @@ function startCaptcha() {
   else {
     // complete
     elementDisabled(false);
-    log("✅ 全て完了しました！\n");
+    log("✅ 全て完了しました！");
   }
 }
 
@@ -573,7 +575,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
 
     if (tokens.length) {
-      log("サーバー参加のセットアップを開始します。");
+      log((first ? "" : "\n") + "サーバー参加のセットアップを開始します。");
       const data = await invite(tokens.shift(), invite_code);
 
       if (data.error) {
