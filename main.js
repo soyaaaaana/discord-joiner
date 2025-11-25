@@ -24,7 +24,7 @@ function onSuccess(key) {
   console.log("Captcha Solved: " + key);
   log("✅ hCaptchaが解決されました！");
   const invite_data = captcha_invites[0];
-  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
+  invite_main(invite_data.discord_token, invite_data.invite_code, invite_data.x_context_properties, invite_data.x_fingerprint, invite_data.session_id, invite_data.captcha_session_id, invite_data.captcha_rqtoken, key);
   captcha_invites.shift();
   startCaptcha();
 }
@@ -332,6 +332,25 @@ function getSessionId(discord_token) {
   });
 }
 
+async function getFingerprintAndSetCookie() {
+  const response = await fetch("https://discord-joiner-api.soyaaaaana.com/experiments", {
+    headers: {
+      "x-context-properties": btoa(JSON.stringify({
+        location: "/channels/@me"
+      })),
+      "x-debug-options": "bugReporterEnabled",
+      "x-discord-locale": new Intl.Locale(navigator.language).baseName,
+      "x-discord-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+      "x-super-properties": getSuperProperties(),
+    },
+    credentials: "include"
+  });
+  if (response.ok) {
+    return (await response.json()).fingerprint;
+  }
+  return null;
+}
+
 async function invite(discord_token, invite_code) {
   log("x-context-propertiesの値を計算しています...");
   const response = await fetch(`https://discord.com/api/v9/invites/${invite_code}?with_counts=true&with_expiration=true&with_permissions=true`, {
@@ -367,6 +386,16 @@ async function invite(discord_token, invite_code) {
     log("❌ x-context-propertiesの値を取得できませんでした。別の固定値を使用します。");
   }
 
+  log("x-fingerprintの値とCookieを取得しています...");
+  let x_fingerprint = null;
+  try {
+    x_fingerprint = await getFingerprintAndSetCookie();
+    log("✅ x-fingerprintの値とCookieを取得しました！");
+  }
+  catch {
+    log("❌ x-fingerprintの値とCookieを取得できませんでした。これらの値を使用せずに続行します。");
+  }
+
   log("session_idの値を取得しています...");
   let session_id;
   try {
@@ -378,36 +407,37 @@ async function invite(discord_token, invite_code) {
     log("❌ session_idの値を取得できませんでした。ランダム文字列を使用します。");
   }
 
-  await invite_main(discord_token, invite_code, x_context_properties, session_id, null, null, null);
+  await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
   return {
     x_context_properties: x_context_properties,
+    x_fingerprint: x_fingerprint,
     session_id: session_id
   };
 }
 
-async function invite_data(discord_token, invite_code, x_context_properties, session_id) {
-  await invite_main(discord_token, invite_code, x_context_properties, session_id, null, null, null);
+async function invite_data(discord_token, invite_code, x_context_properties, x_fingerprint, session_id) {
+  await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
 }
 
-async function invite_main(discord_token, invite_code, x_context_properties, session_id, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
+async function invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
   const token_mask = `${discord_token.split(".")[0]}.***`;
 
-  const language = new Intl.Locale(navigator.language).baseName;
   const headers = {
-    "accept": "*/*",
-    "accept-language": language,
     "authorization": discord_token,
     "content-type": "application/json",
     "x-debug-options": "bugReporterEnabled",
-    "x-discord-locale": language,
-    "x-discord-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone
+    "x-discord-locale": new Intl.Locale(navigator.language).baseName,
+    "x-discord-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+    "x-super-properties": getSuperProperties(),
   };
 
   if (x_context_properties) {
     headers["x-context-properties"] = x_context_properties;
   }
 
-  headers["x-super-properties"] = getSuperProperties();
+  if (x_fingerprint) {
+    headers["x-fingerprint"] = x_fingerprint;
+  }
 
   if (hcaptcha_key) {
     headers["x-captcha-key"] = hcaptcha_key;
@@ -423,12 +453,13 @@ async function invite_main(discord_token, invite_code, x_context_properties, ses
 
   log(`${token_mask} サーバーへの参加リクエストを送信しています...`);
 
-  const response = await fetch("https://discord-joiner-api.soyaaaaana.com/" + invite_code, {
-    "headers": headers,
-    "body": JSON.stringify({
+  const response = await fetch("https://discord-joiner-api.soyaaaaana.com/invite/" + invite_code, {
+    headers: headers,
+    body: JSON.stringify({
       session_id: session_id
     }),
-    "method": "POST"
+    method: "POST",
+    credentials: "include"
   });
 
   if ((!hcaptcha_session_id || !hcaptcha_rqtoken || !hcaptcha_key) && response.status === 400) {
@@ -437,6 +468,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, ses
       discord_token: discord_token,
       invite_code: invite_code,
       x_context_properties: x_context_properties,
+      x_fingerprint: x_fingerprint,
       session_id: session_id,
       captcha_sitekey: json.captcha_sitekey,
       captcha_session_id: json.captcha_session_id,
@@ -477,7 +509,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await invite(tokens.shift(), invite_code);
 
       for (const token in tokens) {
-        await invite_data(token, invite_code, data.x_context_properties, data.session_id);
+        await invite_data(token, invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
       }
 
       log(`要求されたhCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
