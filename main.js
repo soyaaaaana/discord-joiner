@@ -444,7 +444,7 @@ function getMaskedToken(discord_token) {
 async function invite_data(discord_token, invite_code, x_context_properties, x_fingerprint) {
   const token_mask = getMaskedToken(discord_token);
 
-  log("session_idの値を取得しています...");
+  log(`${token_mask} session_idの値を取得しています...`);
 
   let session_id;
   try {
