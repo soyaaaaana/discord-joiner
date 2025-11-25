@@ -429,14 +429,30 @@ async function invite(discord_token, invite_code) {
     }
   }
 
+
+  await invite_data(discord_token, invite_code, x_context_properties, x_fingerprint);
+  return {
+    x_context_properties: x_context_properties,
+    x_fingerprint: x_fingerprint,
+  };
+}
+
+function getMaskedToken(discord_token) {
+  return `${discord_token.split(".")[0]}.***`;
+}
+
+async function invite_data(discord_token, invite_code, x_context_properties, x_fingerprint) {
+  const token_mask = getMaskedToken(discord_token);
+
   log("session_idの値を取得しています...");
+
   let session_id;
   try {
     session_id = await getSessionId(discord_token);
-    log("✅ session_idの値を取得しました！");
+    log(`✅ ${token_mask} session_idの値を取得しました！`);
   }
   catch {
-    log(`❌ session_idの値を取得できませんでした。${strict_mode ? "操作をキャンセル" : "ランダム文字列を使用"}します。`);
+    log(`❌ ${token_mask} session_idの値を取得できませんでした。${strict_mode ? "操作をキャンセル" : "ランダム文字列を使用"}します。`);
 
     if (strict_mode) {
       return {
@@ -449,19 +465,10 @@ async function invite(discord_token, invite_code) {
   }
 
   await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
-  return {
-    x_context_properties: x_context_properties,
-    x_fingerprint: x_fingerprint,
-    session_id: session_id
-  };
-}
-
-async function invite_data(discord_token, invite_code, x_context_properties, x_fingerprint, session_id) {
-  await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
 }
 
 async function invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
-  const token_mask = `${discord_token.split(".")[0]}.***`;
+  const token_mask = getMaskedToken(discord_token);
 
   const headers = {
     "authorization": discord_token,
@@ -584,7 +591,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       for (const token_index in tokens) {
-        await invite_data(tokens[token_index], invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
+        await invite_data(tokens[token_index], invite_code, data.x_context_properties, data.x_fingerprint);
       }
 
       log(`要求されたCaptcha数は${captcha_invites.length}個です${captcha_invites.length ? "。" : "！おめでとう✨️"}`);
