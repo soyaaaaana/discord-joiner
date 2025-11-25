@@ -527,9 +527,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await invite(tokens.shift(), invite_code);
 
       if (data.error) {
+        e.target.removeAttribute("disabled");
         return;
       }
-      
+
       for (const token in tokens) {
         await invite_data(token, invite_code, data.x_context_properties, data.x_fingerprint, data.session_id);
       }
