@@ -57,7 +57,7 @@ function initCaptcha(sitekey, rqdata) {
   let params = { sitekey: sitekey, callback: onSuccess };
   window.hcaptcha.render("captcha-box", params);
   hcaptcha.setData("", { rqdata: rqdata });
-  log("✅ hCaptchaウィジェットを配置しました。")
+  log("hCaptchaウィジェットを配置しました。")
 }
 
 // ========== https://qiita.com/ShotaroImai/items/7ea552323a1f89d67907 ==========
