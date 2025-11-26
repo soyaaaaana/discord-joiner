@@ -1,3 +1,7 @@
+if (location.protocol === "file:" || location.protocol === "content:") {
+  alert("HTMLファイルが直接開かれたことを検知しました。\nCORSエラーや、hCaptchaウィジェットのHostエラーなどが理由で正常に使用できない可能性があります。\nhttps://discord-joiner.soyaaaaana.com を使用してください。");
+}
+
 let captcha_invites = [];
 
 let strict_mode = false;
@@ -5,14 +9,14 @@ let auto_scroll_mode = true;
 
 let first = true;
 function log(message) {
-  first = false;
   const element = document.getElementById("log");
   if (element) {
-    element.value += message + "\n";
+    element.value += (first ? "" :"\n") + message;
     if (auto_scroll_mode) {
       element.scrollTop = element.scrollHeight;
     }
   }
+  first = false;
 }
 
 function startCaptcha() {
@@ -267,6 +271,22 @@ function generateLaunchSignature() {
 }
 // ========== ここまで ==========
 
+// Geminiが作ったcreateUUID関数（http:など、crypto.randomUUID()が使えない環境に対応するための関数）
+const createUUID = () => {
+  // 32文字の16進数ランダムデータ (16バイト)
+  let d = new BigUint64Array(2);
+  crypto.getRandomValues(d);
+  let h = (d[0].toString(16).padStart(16, '0') + d[1].toString(16).padStart(16, '0')).slice(0, 32);
+
+  // v4マスキング (13文字目を'4'、17文字目を'8'～'b')
+  h = h.substring(0, 12) + '4' + h.substring(13);
+  const v = ((parseInt(h[16], 16) & 0x3) | 0x8).toString(16);
+  h = h.substring(0, 16) + v + h.substring(17);
+
+  // フォーマット
+  return h.replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, '$1-$2-$3-$4-$5');
+};
+
 function getSuperPropertiesJson() {
   const os = CheckOs();
   const browser = CheckBrowser();
@@ -287,10 +307,10 @@ function getSuperPropertiesJson() {
     "release_channel": "stable",
     "client_build_number": 471383,
     "client_event_source": null,
-    "client_launch_id": crypto.randomUUID(),
+    "client_launch_id": typeof crypto.randomUUID === "function" ? crypto.randomUUID() : createUUID(),
     "launch_signature": generateLaunchSignature(),
     "client_app_state": "unfocused",
-    "client_heartbeat_session_id": crypto.randomUUID()
+    "client_heartbeat_session_id": typeof crypto.randomUUID === "function" ? crypto.randomUUID() : createUUID(),
   };
 }
 
@@ -578,7 +598,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     strict_mode = document.getElementById("strict").checked;
 
-    const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim());
+    const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim()).filter(token => Boolean(token));
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
 
     if (tokens.length) {
