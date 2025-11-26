@@ -27,7 +27,7 @@ function startCaptcha() {
   else {
     // complete
     elementDisabled(false);
-    log("✅ 全て完了しました！");
+    log("✅ 全ての操作が完了しました！");
   }
 }
 
@@ -384,6 +384,10 @@ async function getFingerprintAndSetCookie() {
   return null;
 }
 
+function getMaskedToken(discord_token) {
+  return `${discord_token.split(".")[0]}.***`;
+}
+
 async function invite(discord_token, invite_code) {
   log("x-context-propertiesの値を計算しています...");
   const response = await fetch(`https://discord.com/api/v9/invites/${invite_code}?with_counts=true&with_expiration=true&with_permissions=true`, {
@@ -412,6 +416,12 @@ async function invite(discord_token, invite_code) {
   else {
     if (response.status === 404) {
       log("❌ 招待リンクが無効です。\n");
+      return {
+        error: "invite",
+      };
+    }
+    else if (response.status === 401) {
+      log(`❌ ${getMaskedToken(discord_token)} 無効なトークンです。\n`);
       return {
         error: "invite",
       };
@@ -449,16 +459,12 @@ async function invite(discord_token, invite_code) {
     }
   }
 
-
   await invite_data(discord_token, invite_code, x_context_properties, x_fingerprint);
+
   return {
     x_context_properties: x_context_properties,
     x_fingerprint: x_fingerprint,
   };
-}
-
-function getMaskedToken(discord_token) {
-  return `${discord_token.split(".")[0]}.***`;
 }
 
 async function invite_data(discord_token, invite_code, x_context_properties, x_fingerprint) {
@@ -484,7 +490,7 @@ async function invite_data(discord_token, invite_code, x_context_properties, x_f
     }
   }
 
-  await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
+  return await invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, null, null, null);
 }
 
 async function invite_main(discord_token, invite_code, x_context_properties, x_fingerprint, session_id, hcaptcha_session_id, hcaptcha_rqtoken, hcaptcha_key) {
@@ -608,12 +614,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (tokens.length) {
       log((first ? "" : "\n") + "サーバー参加のセットアップを開始します。");
-      const data = await invite(tokens.shift(), invite_code);
 
-      if (data.error) {
-        elementDisabled(false);
-        return;
-      }
+      let error = false;
+      let data;
+      do {
+        if (tokens.length) {
+          data = await invite(tokens.shift(), invite_code);
+
+          if (data.error) {
+            error = true;
+          }
+          else {
+            error = false;
+          }
+        }
+        else {
+          error = false;
+        }
+      } while (error)
 
       for (const token_index in tokens) {
         await invite_data(tokens[token_index], invite_code, data.x_context_properties, data.x_fingerprint);
