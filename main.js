@@ -601,6 +601,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const tokens = document.getElementById("tokens").value.replaceAll("\r", "").split("\n").map(token => token.trim()).filter(token => Boolean(token));
     const invite_code = document.getElementById("invite").value.trim().replace(/^(https?:\/\/)?((canary\.|ptb\.)?discord(app)?\.com\.?\/invite\/|discord.gg\/?.*(?=\/))\//, "");
 
+    if (!invite_code) {
+      log("❌ 招待リンクが指定されていません。");
+      elementDisabled(false);
+    }
+
     if (tokens.length) {
       log((first ? "" : "\n") + "サーバー参加のセットアップを開始します。");
       const data = await invite(tokens.shift(), invite_code);
