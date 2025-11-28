@@ -390,9 +390,10 @@ function getMaskedToken(discord_token) {
 
 async function invite(discord_token, invite_code) {
   log("x-context-propertiesの値を計算しています...");
-  const response = await fetch(`https://discord.com/api/v9/invites/${invite_code}?with_counts=true&with_expiration=true&with_permissions=true`, {
+
+  // 招待リンク情報の取得にトークンは必要ない
+  let response = await fetch(`https://discord.com/api/v9/invites/${invite_code}?with_counts=true&with_expiration=true&with_permissions=true`, {
     "headers": {
-      "authorization": discord_token,
       "x-debug-options": "bugReporterEnabled",
       "x-discord-locale": new Intl.Locale(navigator.language).baseName,
       "x-discord-timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -415,13 +416,14 @@ async function invite(discord_token, invite_code) {
   }
   else {
     if (response.status === 404) {
-      log("❌ 招待リンクが無効です。\n");
+      log("❌ 招待リンクが無効です。");
       return {
         error: "invite",
       };
     }
     else if (response.status === 401) {
-      log(`❌ ${getMaskedToken(discord_token)} 無効なトークンです。\n`);
+      // ここ実行されたら意味がわからん
+      log(`❌ 認証が必要なようです。`);
       return {
         error: "invite",
       };
@@ -533,7 +535,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
       session_id: session_id
     }),
     method: "POST",
-    credentials: "include"
+    credentials: "include",
   });
 
   if ((!hcaptcha_session_id || !hcaptcha_rqtoken || !hcaptcha_key) && response.status === 400) {
@@ -610,6 +612,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!invite_code) {
       log("❌ 招待リンクが指定されていません。");
       elementDisabled(false);
+      return;
     }
 
     if (tokens.length) {
