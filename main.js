@@ -305,12 +305,12 @@ function getSuperPropertiesJson() {
     "referrer_current": "",
     "referring_domain_current": "",
     "release_channel": "stable",
-    "client_build_number": 471383,
+    "client_build_number": 472914,
     "client_event_source": null,
     "client_launch_id": typeof crypto.randomUUID === "function" ? crypto.randomUUID() : createUUID(),
     "launch_signature": generateLaunchSignature(),
-    "client_app_state": "unfocused",
     "client_heartbeat_session_id": typeof crypto.randomUUID === "function" ? crypto.randomUUID() : createUUID(),
+    "client_app_state": "focused",
   };
 }
 
@@ -366,7 +366,7 @@ function getSessionId(discord_token) {
 }
 
 async function getFingerprintAndSetCookie() {
-  const response = await fetch("https://discord-joiner-api.soyaaaaana.com/experiments", {
+  const response = await fetch("https://discord-api.soyaaaaana.com/experiments", {
     headers: {
       "x-context-properties": btoa(JSON.stringify({
         location: "/channels/@me"
@@ -529,7 +529,7 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
 
   log(`${token_mask} サーバーへの参加リクエストを送信しています...`);
 
-  const response = await fetch("https://discord-joiner-api.soyaaaaana.com/invite/" + invite_code, {
+  const response = await fetch("https://discord-api.soyaaaaana.com/invite/" + invite_code, {
     headers: headers,
     body: JSON.stringify({
       session_id: session_id
@@ -563,6 +563,9 @@ async function invite_main(discord_token, invite_code, x_context_properties, x_f
   }
   else if (response.status === 403) {
     const json = await response.json();
+    if (json.code === 10008) {
+      log(`❌ ${token_mask} サーバーへ参加できませんでした...\n    このエラーはhCaptchaの解決にテキストを使用した認証ではなく、画像を使用した認証を使用すると軽減される可能性があります。`);
+    }
     log(`❌ ${token_mask} サーバーへ参加できませんでした...\n    エラーコード: ${json.code}\n    理由: ${json.message}`);
   }
   else {
