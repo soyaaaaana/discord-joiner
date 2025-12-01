@@ -412,6 +412,10 @@ async function invite(discord_token, invite_code) {
       "location_channel_type": 0
     }));
 
+    document.getElementById("server_name").innerText = json.guild.name;
+    document.getElementById("server_id").innerText = json.guild.id;
+    document.getElementById("server_info").style.display = "block";
+
     log("✅ x-context-propertiesの値を取得しました！");
   }
   else {
