@@ -18,7 +18,7 @@
 2. Discordトークンと招待リンクを貼り付けて、
 3. 実行ボタンを押すだけ。
 
-## discord-joiner-api.soyaaaaana.comってなんだよ！
+## discord-joiner-api.soyaaaaana.com / discord-api.soyaaaaana.comってなんだよ！
 CORSエラーや、Cookieのdomain設定を回避するためのAPIです。
 <br>
 これでトークン抜いてるとか思うのなら使うのやめたらいいと思います。
